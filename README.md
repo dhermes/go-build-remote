@@ -118,3 +118,47 @@ diff --report-identical-files \
   "${TMP_GOCACHE2}/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d"
 Files .../go-build-remote/tmp01/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d and .../go-build-remote/tmp02/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d are identical
 ```
+
+## Good Enough?
+
+Filippo Valsorda has a wonder [post][1] on byte-for-byte identical **binaries**
+but that doesn't have the same bearing on `GOCACHE`. Let's quickly check if
+the volatile information (timestamps in ASCII text files) **changes** on
+repeated build invocations
+
+```
+TMP_GOCACHE3="$(pwd)/tmp03"
+rm -fr "${TMP_GOCACHE3}" && mkdir -p "${TMP_GOCACHE3}"
+GOCACHE="${TMP_GOCACHE3}" go run ./cmd/hello/ --anything goes
+# c = main.Config{Anything:"goes"}
+
+git add "${TMP_GOCACHE3}"
+git status
+# On branch main
+# Your branch is up to date with 'origin/main'.
+#
+# Changes to be committed:
+#   (use "git restore --staged <file>..." to unstage)
+#         new file:   tmp03/07/075f0acb7f7ab2048b3a40344e8bc945af0bfc921e5dc2ffc5da463319baa3ec-d
+#         new file:   tmp03/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d
+# ...
+#         new file:   tmp03/fd/fdf20d0b7a6c237e4d5fc44092ce1ac9f66a3e4b6f2df1ef30cfd68f34d4bb72-a
+#         new file:   tmp03/trim.txt
+#
+
+GOCACHE="${TMP_GOCACHE3}" go run ./cmd/hello/ --anything goes
+# c = main.Config{Anything:"goes"}
+
+git diff
+# diff --git a/tmp03/63/630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5-a b/tmp03/63/630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5-a
+# index 55413ba..16ea6de 100644
+# --- a/tmp03/63/630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5-a
+# +++ b/tmp03/63/630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5-a
+# @@ -1 +1 @@
+# -v1 630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855                    0  1637389232498829000
+# +v1 630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855                    0  1637389324568857000
+
+git rm -fr "${TMP_GOCACHE3}"
+```
+
+[1]: https://blog.filippo.io/reproducing-go-binaries-byte-by-byte/
