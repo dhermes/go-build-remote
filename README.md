@@ -277,6 +277,29 @@ cat stderr.txt | grep \
 ```
 
 Tracing this back, these correspond to the same 5 `packagefile ...`
-packages we saw when using `go build -x`.
+packages we saw when using `go build -x`. We can further **check** that
+these hashes directly correspond to the static archives for that package.
+For example the `github.com/spf13/cobra` package showed up in the
+`go build -x` output as:
+
+```
+# packagefile github.com/spf13/cobra=.../go-build-remote/tmp01/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d
+```
+
+and we can see that exact static archive by following
+
+```
+# HASH[build github.com/spf13/cobra]: 3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702
+```
+
+within `GOCACHE`:
+
+```
+cat "${TMP_GOCACHE1}/35/3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702-a"
+# v1 3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702 094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75              1180034  1637391071999507000
+
+file "${TMP_GOCACHE1}/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d"
+# .../go-build-remote/tmp01/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d: current ar archive
+```
 
 [1]: https://blog.filippo.io/reproducing-go-binaries-byte-by-byte/
