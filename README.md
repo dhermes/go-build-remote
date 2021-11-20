@@ -82,3 +82,39 @@ diff "${TMP_GOCACHE1}" "${TMP_GOCACHE2}"
 # +++ .../go-build-remote/tmp02/3d/3d1130644e3e25a14e87b8f923426da26bcb533aa9d00cad50767e9f37cebad9-a 2021-11-19 23:57:53.000000000 -0600
 # ...
 ```
+
+OK but what is **actually** different. Looking at the files in `GOCACHE`,
+most of them are just text files which point at **other** files in the
+`GOCACHE` (magic secrets!):
+
+```
+find "${TMP_GOCACHE1}" -type f | sort -u | xargs file
+# .../go-build-remote/tmp01/07/075f0acb7f7ab2048b3a40344e8bc945af0bfc921e5dc2ffc5da463319baa3ec-d: c program text, ASCII text
+# .../go-build-remote/tmp01/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d: current ar archive
+# .../go-build-remote/tmp01/0e/0e4c02c3e4c7616da3b53532a5ddd22048fc34c721a6a7052f2e2d64fae56984-d: ASCII text
+# .../go-build-remote/tmp01/1e/1e28f1f995cdba394c4c1ce40336db2bdaf6c469eda948c4c3ac0775a2da0c7c-d: ASCII text
+# .../go-build-remote/tmp01/2b/2b56fd4022e225d4bd4e47e954e462c99e397a2cd0901d9921015b3e0e8bf19b-d: current ar archive
+# ...
+
+cat .../go-build-remote/tmp01/1e/1e28f1f995cdba394c4c1ce40336db2bdaf6c469eda948c4c3ac0775a2da0c7c-d
+# ./addrselect.go
+# ./conf.go
+# ./dial.go
+# ./dnsclient.go
+# ...
+```
+
+However **most** of the text files **don't** differ and none of the static
+archives differ:
+
+```
+diff --report-identical-files \
+  "${TMP_GOCACHE1}/1e/1e28f1f995cdba394c4c1ce40336db2bdaf6c469eda948c4c3ac0775a2da0c7c-d" \
+  "${TMP_GOCACHE2}/1e/1e28f1f995cdba394c4c1ce40336db2bdaf6c469eda948c4c3ac0775a2da0c7c-d"
+# Files .../go-build-remote/tmp01/1e/1e28f1f995cdba394c4c1ce40336db2bdaf6c469eda948c4c3ac0775a2da0c7c-d and .../go-build-remote/tmp02/1e/1e28f1f995cdba394c4c1ce40336db2bdaf6c469eda948c4c3ac0775a2da0c7c-d are identical
+
+diff --report-identical-files \
+  "${TMP_GOCACHE1}/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d" \
+  "${TMP_GOCACHE2}/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d"
+Files .../go-build-remote/tmp01/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d and .../go-build-remote/tmp02/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d are identical
+```
