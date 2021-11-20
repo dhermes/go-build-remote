@@ -161,4 +161,28 @@ git diff
 git rm -fr "${TMP_GOCACHE3}"
 ```
 
+Building with `-x` gives us a little bit of insight to what these hashes
+correspond to
+
+```
+TMP_GOCACHE1="$(pwd)/tmp01"
+rm -fr "${TMP_GOCACHE1}" && mkdir -p "${TMP_GOCACHE1}"
+GOCACHE="${TMP_GOCACHE1}" go run -x ./cmd/hello/ --anything goes
+# WORK=/var/folders/61/6rn9bhys12l9qngs88ygnp7c0000gp/T/go-build2639010854
+# ...
+# packagefile github.com/dhermes/go-build-remote/cmd/hello=.../go-build-remote/tmp02/2b/2b56fd4022e225d4bd4e47e954e462c99e397a2cd0901d9921015b3e0e8bf19b-d
+# ...
+# packagefile github.com/spf13/cobra=.../go-build-remote/tmp02/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d
+# ...
+# packagefile github.com/spf13/pflag=.../go-build-remote/tmp02/51/514856a8a5d0365908ed001af14f2593d836e2428284124e1f89aa70de57b5c5-d
+# ...
+# packagefile net=.../go-build-remote/tmp02/bb/bbcf2688e2ba626c11d9029bdd9bc4e5c0ab1503f73cdad3b4f30a77a1f65884-d
+# ...
+# packagefile runtime/cgo=.../go-build-remote/tmp02/c6/c6cd3ba650073f07bdbe15b710c29acbb3c7eac77a469070d51d8de2ec5871a3-d
+# ...
+```
+
+Also, whoops `runtime/cgo` I definitely should have built with
+`CGO_ENABLED=0`.
+
 [1]: https://blog.filippo.io/reproducing-go-binaries-byte-by-byte/
