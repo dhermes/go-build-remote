@@ -56,3 +56,29 @@ diff "${TMP_GOCACHE1}" "${TMP_GOCACHE2}"
 # diff -Nru .../go-build-remote/tmp01/3d/3d1130644e3e25a14e87b8f923426da26bcb533aa9d00cad50767e9f37cebad9-a .../go-build-remote/tmp02/3d/3d1130644e3e25a14e87b8f923426da26bcb533aa9d00cad50767e9f37cebad9-a
 # ...
 ```
+
+## Try Again, With `SOURCE_DATE_EPOCH`
+
+```
+TMP_GOCACHE1="$(pwd)/tmp01"
+rm -fr "${TMP_GOCACHE1}" && mkdir -p "${TMP_GOCACHE1}"
+SOURCE_DATE_EPOCH=0 GOCACHE="${TMP_GOCACHE1}" go run ./cmd/hello/ --anything goes
+# c = main.Config{Anything:"goes"}
+
+TMP_GOCACHE2="$(pwd)/tmp02"
+rm -fr "${TMP_GOCACHE2}" && mkdir -p "${TMP_GOCACHE2}"
+SOURCE_DATE_EPOCH=0 GOCACHE="${TMP_GOCACHE2}" go run ./cmd/hello/ --anything goes
+# c = main.Config{Anything:"goes"}
+
+diff "${TMP_GOCACHE1}" "${TMP_GOCACHE2}"
+# diff -Nru .../go-build-remote/tmp01/35/3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702-a .../go-build-remote/tmp02/35/3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702-a
+# --- .../go-build-remote/tmp01/35/3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702-a 2021-11-19 23:57:32.000000000 -0600
+# +++ .../go-build-remote/tmp02/35/3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702-a 2021-11-19 23:57:53.000000000 -0600
+# @@ -1 +1 @@
+# -v1 3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702 094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75              1180034  1637387852815852000
+# +v1 3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702 094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75              1180034  1637387873696378000
+# diff -Nru .../go-build-remote/tmp01/3d/3d1130644e3e25a14e87b8f923426da26bcb533aa9d00cad50767e9f37cebad9-a .../go-build-remote/tmp02/3d/3d1130644e3e25a14e87b8f923426da26bcb533aa9d00cad50767e9f37cebad9-a
+# --- .../go-build-remote/tmp01/3d/3d1130644e3e25a14e87b8f923426da26bcb533aa9d00cad50767e9f37cebad9-a 2021-11-19 23:57:32.000000000 -0600
+# +++ .../go-build-remote/tmp02/3d/3d1130644e3e25a14e87b8f923426da26bcb533aa9d00cad50767e9f37cebad9-a 2021-11-19 23:57:53.000000000 -0600
+# ...
+```
