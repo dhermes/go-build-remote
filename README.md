@@ -170,19 +170,113 @@ rm -fr "${TMP_GOCACHE1}" && mkdir -p "${TMP_GOCACHE1}"
 GOCACHE="${TMP_GOCACHE1}" go run -x ./cmd/hello/ --anything goes
 # WORK=/var/folders/61/6rn9bhys12l9qngs88ygnp7c0000gp/T/go-build2639010854
 # ...
-# packagefile github.com/dhermes/go-build-remote/cmd/hello=.../go-build-remote/tmp02/2b/2b56fd4022e225d4bd4e47e954e462c99e397a2cd0901d9921015b3e0e8bf19b-d
+# packagefile github.com/dhermes/go-build-remote/cmd/hello=.../go-build-remote/tmp01/2b/2b56fd4022e225d4bd4e47e954e462c99e397a2cd0901d9921015b3e0e8bf19b-d
 # ...
-# packagefile github.com/spf13/cobra=.../go-build-remote/tmp02/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d
+# packagefile github.com/spf13/cobra=.../go-build-remote/tmp01/09/094944797386974e2e1fe52311b04d613c3d62b5b919c9ae8725cf194e28aa75-d
 # ...
-# packagefile github.com/spf13/pflag=.../go-build-remote/tmp02/51/514856a8a5d0365908ed001af14f2593d836e2428284124e1f89aa70de57b5c5-d
+# packagefile github.com/spf13/pflag=.../go-build-remote/tmp01/51/514856a8a5d0365908ed001af14f2593d836e2428284124e1f89aa70de57b5c5-d
 # ...
-# packagefile net=.../go-build-remote/tmp02/bb/bbcf2688e2ba626c11d9029bdd9bc4e5c0ab1503f73cdad3b4f30a77a1f65884-d
+# packagefile net=.../go-build-remote/tmp01/bb/bbcf2688e2ba626c11d9029bdd9bc4e5c0ab1503f73cdad3b4f30a77a1f65884-d
 # ...
-# packagefile runtime/cgo=.../go-build-remote/tmp02/c6/c6cd3ba650073f07bdbe15b710c29acbb3c7eac77a469070d51d8de2ec5871a3-d
+# packagefile runtime/cgo=.../go-build-remote/tmp01/c6/c6cd3ba650073f07bdbe15b710c29acbb3c7eac77a469070d51d8de2ec5871a3-d
 # ...
 ```
 
 Also, whoops `runtime/cgo` I definitely should have built with
 `CGO_ENABLED=0`.
+
+## Can haz `GODEBUG`?
+
+From the docs for `GOCACHE`
+
+> `GODEBUG=gocachehash=1` causes the `go` command to print the inputs
+> for all of the content hashes it uses to construct cache lookup keys.
+> The output is voluminous but can be useful for debugging the cache.
+
+Using it:
+
+```
+TMP_GOCACHE1="$(pwd)/tmp01"
+rm -fr "${TMP_GOCACHE1}" && mkdir -p "${TMP_GOCACHE1}"
+
+GOCACHE="${TMP_GOCACHE1}" go run ./cmd/hello/ --anything goes  # Warm up first
+# c = main.Config{Anything:"goes"}
+
+GODEBUG=gocachehash=1 GOCACHE="${TMP_GOCACHE1}" go run ./cmd/hello/ --anything goes > /dev/null 2> stderr.txt
+cat stderr.txt
+# HASH[build internal/unsafeheader]
+# HASH[build internal/unsafeheader]: "go1.17.2"
+# HASH[build internal/unsafeheader]: "compile\n"
+# HASH[build internal/unsafeheader]: "goos darwin goarch amd64\n"
+# HASH[build internal/unsafeheader]: "import \"internal/unsafeheader\"\n"
+# HASH[build internal/unsafeheader]: "omitdebug false standard true local false prefix \"\"\n"
+# ...
+# HASH[link github.com/dhermes/go-build-remote/cmd/hello]: "packagefile runtime/cgo=L8quj4hTlXXpseOf3wLt\n"
+# HASH[link github.com/dhermes/go-build-remote/cmd/hello]: 624cc1e80dd6bc021fa4268777eb6c65faaaa4887a278d50348af933eedd583f
+# HASH subkey 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7 "link-stdout" = 630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5
+```
+
+For now, let's just see if we can find the hash that showed up before via
+`git diff`
+
+```
+cat stderr.txt | grep 630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5
+# HASH subkey 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7 "link-stdout" = 630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5
+
+cat stderr.txt | grep 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7
+# HASH[build github.com/dhermes/go-build-remote/cmd/hello]: 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7
+# HASH subkey 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7 "stdout" = 6d4526b54d5176299b160e53e82b0e82ad741b5ca92e12b995c2ab9262c1c960
+# HASH subkey 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7 "link-stdout" = 630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5
+
+cat stderr.txt | grep '^HASH\[link github.com/dhermes/go-build-remote/cmd/hello\]:'
+# HASH[link github.com/dhermes/go-build-remote/cmd/hello]: "go1.17.2"
+# ...
+# HASH[link github.com/dhermes/go-build-remote/cmd/hello]: "packagefile runtime/cgo=L8quj4hTlXXpseOf3wLt\n"
+# HASH[link github.com/dhermes/go-build-remote/cmd/hello]: 624cc1e80dd6bc021fa4268777eb6c65faaaa4887a278d50348af933eedd583f
+```
+
+This somewhat goes nowhere, but we can chase down the hashes in `GOCACHE`:
+
+```
+cat "${TMP_GOCACHE1}/63/630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5-a"
+# v1 630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855                    0  1637391075702695000
+
+file "${TMP_GOCACHE1}/e3/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-d"
+# .../go-build-remote/tmp01/e3/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-d: empty
+
+grep -r -l e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 "${TMP_GOCACHE1}" | sort -u
+# .../go-build-remote/tmp01/63/630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5-a
+# .../go-build-remote/tmp01/65/6575b56bb5b1cd7df5539e4cbd49b8117483287a87a91d706c195f0c7ad1a6c2-a
+# .../go-build-remote/tmp01/6d/6d4526b54d5176299b160e53e82b0e82ad741b5ca92e12b995c2ab9262c1c960-a
+# .../go-build-remote/tmp01/a7/a76f57f6bdc530963467bb7d502ab7e28d1ae361a6c7de554181369290e20a6e-a
+# .../go-build-remote/tmp01/c1/c1d8a401d031b93967e9ea298d94b5db10cf7f14ae843ac8d681c5dcf8802840-a
+# .../go-build-remote/tmp01/f3/f3a7dfa77e01a34da25bd3538564f82d648d001b4383519eff36835f3119cd49-a
+
+cat stderr.txt | grep \
+    '\(630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5\|6575b56bb5b1cd7df5539e4cbd49b8117483287a87a91d706c195f0c7ad1a6c2\|6d4526b54d5176299b160e53e82b0e82ad741b5ca92e12b995c2ab9262c1c960\|a76f57f6bdc530963467bb7d502ab7e28d1ae361a6c7de554181369290e20a6e\|c1d8a401d031b93967e9ea298d94b5db10cf7f14ae843ac8d681c5dcf8802840\|f3a7dfa77e01a34da25bd3538564f82d648d001b4383519eff36835f3119cd49\)'
+# HASH subkey fdf20d0b7a6c237e4d5fc44092ce1ac9f66a3e4b6f2df1ef30cfd68f34d4bb72 "stdout" = c1d8a401d031b93967e9ea298d94b5db10cf7f14ae843ac8d681c5dcf8802840
+# HASH subkey a71032b747bf46ae0d4ee2e86c4e6a2478018fc21e6fb060b359b3dcebd9131d "stdout" = 6575b56bb5b1cd7df5539e4cbd49b8117483287a87a91d706c195f0c7ad1a6c2
+# HASH subkey abc8312cb7818ec207f9289891d77e19d290667ae6a7f0c20ff550606486028b "stdout" = a76f57f6bdc530963467bb7d502ab7e28d1ae361a6c7de554181369290e20a6e
+# HASH subkey 3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702 "stdout" = f3a7dfa77e01a34da25bd3538564f82d648d001b4383519eff36835f3119cd49
+# HASH subkey 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7 "stdout" = 6d4526b54d5176299b160e53e82b0e82ad741b5ca92e12b995c2ab9262c1c960
+# HASH subkey 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7 "link-stdout" = 630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5
+
+cat stderr.txt | grep \
+  '\(3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702\|9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7\|a71032b747bf46ae0d4ee2e86c4e6a2478018fc21e6fb060b359b3dcebd9131d\|abc8312cb7818ec207f9289891d77e19d290667ae6a7f0c20ff550606486028b\|fdf20d0b7a6c237e4d5fc44092ce1ac9f66a3e4b6f2df1ef30cfd68f34d4bb72\)'
+# HASH[build runtime/cgo]: fdf20d0b7a6c237e4d5fc44092ce1ac9f66a3e4b6f2df1ef30cfd68f34d4bb72
+# HASH subkey fdf20d0b7a6c237e4d5fc44092ce1ac9f66a3e4b6f2df1ef30cfd68f34d4bb72 "stdout" = c1d8a401d031b93967e9ea298d94b5db10cf7f14ae843ac8d681c5dcf8802840
+# HASH[build net]: a71032b747bf46ae0d4ee2e86c4e6a2478018fc21e6fb060b359b3dcebd9131d
+# HASH subkey a71032b747bf46ae0d4ee2e86c4e6a2478018fc21e6fb060b359b3dcebd9131d "stdout" = 6575b56bb5b1cd7df5539e4cbd49b8117483287a87a91d706c195f0c7ad1a6c2
+# HASH[build github.com/spf13/pflag]: abc8312cb7818ec207f9289891d77e19d290667ae6a7f0c20ff550606486028b
+# HASH subkey abc8312cb7818ec207f9289891d77e19d290667ae6a7f0c20ff550606486028b "stdout" = a76f57f6bdc530963467bb7d502ab7e28d1ae361a6c7de554181369290e20a6e
+# HASH[build github.com/spf13/cobra]: 3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702
+# HASH subkey 3535f3659d3278773cdab967c7d276a77177b38b0522bb9909d960f8f5278702 "stdout" = f3a7dfa77e01a34da25bd3538564f82d648d001b4383519eff36835f3119cd49
+# HASH[build github.com/dhermes/go-build-remote/cmd/hello]: 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7
+# HASH subkey 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7 "stdout" = 6d4526b54d5176299b160e53e82b0e82ad741b5ca92e12b995c2ab9262c1c960
+# HASH subkey 9c4088b546b50cdb94399154c0c26d91dbcae49f635513dd1d556c399abe88f7 "link-stdout" = 630a8ca60ef6ab1e5333358bd71bd59049d6767f0248d5f68a0740bfd50b94f5
+```
+
+Tracing this back, these correspond to the same 5 `packagefile ...`
+packages we saw when using `go build -x`.
 
 [1]: https://blog.filippo.io/reproducing-go-binaries-byte-by-byte/
